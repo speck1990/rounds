@@ -2,9 +2,20 @@ var createError = require("http-errors");
 var express = require("express");
 var path = require("path");
 var cookieParser = require("cookie-parser");
+const passport = require("passport");
+const expressSession = require("express-session");
 var logger = require("morgan");
 
+// connect to database
+require("./db/mongoose");
+
 var app = express();
+
+// passport config
+const User = require("./models/user");
+passport.use(User.createStrategy());
+passport.serializeUser(User.serializeUser());
+passport.deserializeUser(User.deserializeUser());
 
 app.use(logger("dev"));
 app.use(express.json());
@@ -12,12 +23,24 @@ app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, "public")));
 
-app.use("/", require("./routes/index"));
+app.use(
+	expressSession({
+		secret: process.env.SESSION_SECRET,
+		resave: false,
+		saveUninitialized: false
+	})
+);
 
-// catch 404 and forward to error handler
-app.use(function(req, res, next) {
-	next(createError(404));
-});
+// passport initialize
+app.use(passport.initialize());
+app.use(passport.session());
+
+app.use("/", require("./routes/index"));
+app.use("/", require("./routes/register"));
+app.use("/", require("./routes/login"));
+app.use("/", require("./routes/authorize"));
+app.use("/", require("./routes/dashboard"));
+app.use("/", require("./routes/budgets"));
 
 // error handler
 app.use(function(err, req, res, next) {
